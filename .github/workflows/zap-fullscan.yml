@@ -16,12 +16,11 @@ jobs:
       with:
         target: "http://testphp.vulnweb.com"
 
-        # Fix artifact issues
-        artifact_name: "zap-report"
+        # Disable all artifacts (fixes GitHub 2025 error)
+        upload_artifact: false
         allow_issue_writing: false
         issue_title: ""
 
-        # Authentication configuration
         cmd_options: >
           -z "
           -config scripts.scripts.enable=true
