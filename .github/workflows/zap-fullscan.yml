@@ -1,4 +1,4 @@
-name: ZAP Full Scan with Authentication
+name: ZAP Full Scan (Fixed Artifact Upload)
 
 on:
   workflow_dispatch:
@@ -8,25 +8,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: ZAP Full Scan
-      uses: zaproxy/action-full-scan@v0.10.0
-      with:
-        target: "http://testphp.vulnweb.com"
-
-        # Disable all artifacts (fixes GitHub 2025 error)
-        upload_artifact: false
-        allow_issue_writing: false
-        issue_title: ""
-
-        cmd_options: >
+    # Run ZAP Docker Full Scan manually
+    - name: Run ZAP Full Scan
+      run: |
+        docker pull ghcr.io/zaproxy/zaproxy:stable
+        docker run \
+          -v ${{ github.workspace }}:/zap/wrk \
+          ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py \
+          -t http://testphp.vulnweb.com \
+          -r zap-full-report.html \
+          -w zap-alerts.md \
+          -J zap-alerts.json \
           -z "
-          -config scripts.scripts.enable=true
-          -config scripts.autoRun.enable=true
-          -config authentication.loginUrl=http://testphp.vulnweb.com/userinfo.php
-          -config authentication.loginScript=/github/workspace/zap-scripts/login.js
-          -config authentication.username=test
-          -config authentication.password=test
+            -config scripts.scripts.enable=true
+            -config scripts.autoRun.enable=true
+            -config authentication.loginUrl=http://testphp.vulnweb.com/userinfo.php
+            -config authentication.loginScript=/zap/wrk/zap-scripts/login.js
+            -config authentication.username=test
+            -config authentication.password=test
           "
+
+    # Upload HTML report
+    - name: Upload HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-html-report
+        path: zap-full-report.html
+
+    # Upload JSON alerts
+    - name: Upload JSON Alerts
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-alerts
+        path: zap-alerts.json
+
+    # Upload Markdown summary
+    - name: Upload MD Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-summary-md
+        path: zap-alerts.md
